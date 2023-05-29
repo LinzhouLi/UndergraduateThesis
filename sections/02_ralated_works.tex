@@ -1,0 +1,66 @@
+\section{相关工作}
+\subsection{纳维斯托克方程}
+
+    流体在生活中无处不在，比如水、烟雾、火焰等等，它们的运动复杂多样，所以通过计算机模拟流体运动的呈现的视觉效果是图形学重要的一部分。目前，流体仿真越来越广泛地应用于工程模拟、游戏开发、虚拟现实等领域。在物理上，不可压缩流体的运动可以用一组偏微分方程所描述，即纳维-斯托克斯方程（Navier-Stokes Equations）\cite{BM07Fluid, B15Fluid}：
+
+    \begin{equation}\label{eq:ns1}
+    	\frac{\partial \mathbf{u}}{\partial t} = -\mathbf{u} \cdot \nabla \mathbf{u} - \frac {1}{\rho} \nabla p + \mathbf{g} + \mu \nabla \cdot \nabla \mathbf{u}
+    \end{equation}
+    
+    \begin{equation}\label{eq:ns2}
+    	\nabla \cdot \mathbf{u} = 0
+    \end{equation}
+
+    其中，$\mathbf{u}$ 为速度，$\rho$ 为密度，$p$ 为压强，$\mu$ 为粘滞系数, $\mathbf{g}$ 为重力加速度。公式\ref{eq:ns1}描述了动量守恒，流体速度场的变化受四个因素的影响，分别是：速度本身导致的变化，压强，外力与粘滞力。而公式\ref{eq:ns2}则描述了质量守恒，即流体是不可压缩的，所以速度场的散度为零。因此，如何离散化求解N-S方程就是流体模拟的关键所在，而不同的模拟方法可以根据离散化的视角不同划分为三类：欧拉视角（网格法），拉格朗日视角（粒子法）以及混合欧拉-拉格朗日视角（网格-粒子混合方法）。
+
+    在欧拉视角下，流体所在的空间被划分为均匀网格，网格自身的位置并不随流体的运动而改变。同时，在每个格点上存储物理量，如速度、压强、浓度等。显然，均匀网格可以使得计算时很容易随机访问物理量。但是，难以计算流体运动给网格上的物理量带来的变化。代表方法如Stable Fluids\cite{FSJ01Somke, S99EM}。
+
+    在拉格朗日视角下，流体自身被离散化为大量粒子，粒子随着流体一起运动，在每个粒子上存储物理量，如位置，速度，质量等。显然，自由的粒子可以方便地模拟流体的运动，只需要改变粒子的位置即可。但是，这种方法难以计算粒子之间的互相影响，因为不能直接访问某位置附近的粒子。代表方法如平滑粒子流体动力学（Smoothed Particle Hydrodynamics, SPH）\cite{M92SPH}。
+
+    而混合欧拉-拉格朗日视角相当于结合了前两者，空间中即存在网格也存在粒子。先后在粒子和网格上计算相对容易的部分，通过插值方法将物理量在粒子和网格上相互转换。显然，这种方法使前两个方法取长补短，但是物理量在粒子和网格之间的转换又会造成不必要的时间和空间开销。代表方法有：PIC（Particle in Cell）\cite{H62PIC}、FLIP（Fluid Implicit Particles）\cite{BR86FLIP}、物质点法（Material Point Method，MPM）\cite{JST16MPM}。
+
+\subsection{基于网格的模拟方法}
+
+    欧拉法是通过均匀网格离散空间物理场的流体模拟方法。Harlow和Welch\cite{HW65MAC}提出了MAC（Marker-and-cell）网格，将速度的xyz分量分别保存在网格的面上而非网格中心，这样做提高了差分计算的数值精度，并且避免了非平凡零空间问题。欧拉法的算法步骤可以分为：平流（Advection），添加外力（Body force），扩散（Diffusion）和压强投影（Pressure projection）。
+
+    平流是欧拉法流体模拟的一个关键步骤，因为网格法描述流体移动不像粒子法一样简单，所以平流步骤的准确程度对模拟效果有很大影响。最简单的Advection方案是semi-Lagrangian法,即以当前格点 $x_1$ 位置的速度向后推一个时间步长，得到 $x_2$ 位置，认为 $x_1$ 位置的流体由 $x_2$ 流动而来，其物理量也可以由 $x_2$ 位置插值得到。这种方法可以用龙格库塔法（Runge-Kutta)将时间步分成多段计算，进一步提高数值精度。Kim\cite{KLL06BFECC}等人提出了BFECC方法，该方法执行多个向后和向前Advection步骤，以纠正空间和时间误差。Jonas\cite{ZNT18AR}等人进一步提出了在模拟步骤中间应用反射算子，大大降低了能量耗散。
+
+    计算外力是几个较为简单的步骤，一般只有重力，而在模拟烟雾等气体是，需要考虑温度场和密度场变化所带来的浮力，在\textit{Fluid Engine Development}一书中有具体实现\cite{K17Fluid}。
+
+    流体扩散即计算粘滞力，对应这公式\ref{eq:ns1}的最后一项，其由速度的拉普拉斯表示。具体实现可以分为前向欧拉积分和后向欧拉积分，前向欧拉积分实现简单，但是对大时间步长不稳定，后向欧拉积分需要求解一个全局的稀疏线性系统，但是可以稳定模拟。由于Advection步骤中的插值运算会带来“数值粘性”，如果模拟水这种粘性较小的液体，可以不计算流体扩散。
+    
+    压强投影是欧拉法流体模拟的关键，正确地计算压强，才能保证速度场无散，流体不可压缩。压强投影的步骤如下：首先计算速度场散度，然后求解压强泊松方程，最后通过压强梯度得到无散速度场。求解泊松方程的常用方法有雅可比迭代法，高斯-塞德尔迭代法，而最高效的解算器是预条件共轭梯度法（Preconditioned Conjugate Gradient, PCG）\cite{HK12IPPCG}。常用的PCG方法有ICPCG（Incomplete Cholesky PCG）、IPPCG（Incomplete Poisson PCG）\cite{HK12IPPCG}以及MGPCG（Multigrid PCG）\cite{MST10MGPCG}。
+    
+    压强投影的迭代计算是欧拉法流体模拟的性能瓶颈。Frank\cite{LGF04EM}等人使用八叉树优化网格数据结构。Stam\cite{S03EM}进一步简化Stable Fluids方法使得其能实时运行。Harris\cite{H05EM}使用GPU加速流体模拟。Rabbani\cite{RGR22CPF}又提出了使用两次可分离滤波比较精确地近似迭代法压力投影计算，在提高性能的同时，保证模拟的结果。
+
+\subsection{基于粒子的模拟方法}
+
+    SPH是拉格朗日视角流体模拟的代表方法，它源自天体物理学领域\cite{M92SPH, CR99SPH}，Müller\cite{MCG03SPH}等人将此方法首先用于计算机图形学流体模拟。SPH是一种基于积分插值理论的方法，它通过自由移动的粒子来作为空间中连续物理场的离散采样点，空间中任意位置的物理量或微分值可以由临近粒子的值加权平均得到。
+
+    \begin{equation}
+    	A_i = \sum_j \frac {m_j} {p_j} A_j w_{ij}
+    \end{equation}
+    
+    其中 $A$ 为插值物理量，$m$ 为粒子质量，$w$ 为核函数插值权重。具体的核函数有多种，如Poly6，Spiky等\cite{MCG03SPH}。在确定好如何离散化空间之后，可以得出SPH的基本算法框架：首先计算所以粒子的密度，其次计算粘滞力与外力，然后求解压强，最后根据时间步更新粒子速度与位置。与欧拉法模拟一样，最关键的步骤在于压强求解。而求解压强又可以分为两类方法，一种是EOS（Equation Of State），另一种是PPE（Pressure Poisson Equation)\cite{KBS19SPH}。
+    
+    EOS是一种局部的压强解算方法，它计算粒子与其邻近粒子的密度差，通过状态方程将其转化为此粒子处的压强。也就是说在流体被压缩或膨胀后计算出恢复原状的作用力，所以这种方法模拟的流体是可压缩或弱可压缩的，如WCSPH（Weakly Compressible SPH）\cite{BT07WCSPH}。这种方法实现简单，可以对每个粒子独立地计算压强而不用解一个全局的线性系统。但是这种方法模拟的可压流体效果一般，且需要较小的时间步长。
+    
+    PPE是一种全局的压强解算方法。它往往采样了迭代式的算法框架，从而保证流体的不可压缩性。四个当前主流的PPE压强结算方法为：IISPH（Implicit Incompressible SPH）\cite{ICS13IISPH}、PCISPH（Predictive-corrective Incompressible SPH）\cite{SP09PCISPH, BET10PCISPH}、PBF（Position Based Fluid）\cite{MM13PBF}和DFSPH（Divergence-free SPH）\cite{BK15DFSPH, BK16DFSPH}。Dan等人在SPH综述\cite{KBS22SPH}中证明了这几种算法的等价性。
+    
+    SPH最大的算法瓶颈在于邻近粒子搜索，如果不做任何优化，邻居搜索的时间复杂度为 $O(n^2)$，这显然是不能接受的。Green\cite{G10NS}给出了基于Cuda的邻居搜索优化方案：在空间中建立间隔为搜索半径的均匀网格，将粒子放在网格中，搜索时只需查找27个网格中的粒子即可。但是三维空间会大大消耗存储空间，所以Ihmsen\cite{IAB11NS}等人提出了紧凑哈希（Compact Hashing）算法，使用哈希表压缩三维网格，同时使用Z-curve进行排序，以保证空间局部性，提高缓存命中率。
+
+\subsection{网格-粒子混合模拟方法}
+
+    PIC是最原始的混合欧拉-拉格朗日方法，它在网格上计算压强投影，而使用粒子完成Advection。FLIP\cite{ZB05FLIP}通过“隐式粒子”改善了PIC的数值耗散问题，但是却降低了模拟的稳定性。APIC（Affine Particle in Cell）\cite{JSS15APIC, JST17APIC}通过引入仿射变换来计算粒子的速度，提高精度的同时保证了角动量守恒。
+    
+    MPM\cite{JST16MPM}方法则可以模拟范围更广的物理材质，如弹塑性物体。MLS-MPM（Moving Least Square MPM）\cite{HFG18MSLMPM, HLA19Taichi}大大改进了MPM的计算效率。与PIC或FLIP方法不同，MPM方法更接近于拉格朗日法，它并不在网格上求解压强投影，网格更像是一种加速粒子相邻区域插值的辅助结构。所以模拟时往往需要较小的时间步长。
+
+\subsection{流体渲染}
+
+    与流体模拟相同，流体渲染的方法也多种多样，一方面，针对离线应用或实时应用的渲染方法不同，另一方面，针对不同的模拟方法（网格法/粒子法），所采取的渲染方法也不尽相同。由于网格和粒子都可以看作对空间中流体的采样，所以在恢复流体表面时，如何既能使得表面平滑，又能保留流体的细节（如水花、波浪等），是各种流体渲染方法都需要面临的挑战。
+    
+    其中一个主流的方法是重建流体表面。在网格模拟方法中，流体表面就是水平集（Level Set）\cite{OS88LS}为0的隐式表面。由于空间已经被划分为均匀网格，可以直接在这个网格上使用经典的移动立方体\cite{LC87MC}（Marching Cubes）算法。相比之下，粒子模拟方法就需要通过每个粒子的核函数相互重叠来定义标量密度场，然后在这个标量场中使用移动立方体方法提取等值面。Jihun\cite{YT13AK}等人提出使用主成分分析得到各向异性的核函数，从而使得重建表面更加平滑。如果需要高质量的重建结果，Akinci等人建议使用粒子间距一半的网格密度重建表面\cite{AIA12SR, AAI12SR}。显然这种方法一般只能用于离线应用。另外也有一些不重建表面的方法，例如，随着模拟时间推移而优化显示网格的表面追踪方法\cite{EFF02LS}，通过元球\cite{KSN08MB, ZSP08ASR}（Metaballs）或距离场\cite{GSS10SPH}计算光线和等值面的交点从而避免多边形化。
+    
+    如果需要实时渲染，屏幕空间的渲染方法就是一个不错的解决方案。这些方法有一个共性，它们都从球型粒子光栅化得到深度图，再对深度图进行平滑，最后在屏幕空间渲染。由于大部分计算都在2D完成，所以这些方法非常高效。在PBD中，深度图经过二项式滤波器，再使用移动正方形提取对相机可见的粒子\cite{MHH07PBD}。相比之下，一些方法\cite{VGS09SSF, G10SSF, BSW10LPF, TY18NRSSF}可以直接将深度图用于最终渲染。Van\cite{VGS09SSF}等人平滑了粒子间的曲率变化。Bagar\cite{BSW10LPF}等人进一步拓展了此方法，使得平滑程度与相机距离无关。与平滑曲率不同，Green\cite{G10SSF}使用高斯滤波平滑深度图，并使用双边权重来保持轮廓边缘。如果将2D滤波器替换为两个方向的1D滤波器，计算效率会大大提升，但同时带来一些可接受的伪影状瑕疵。Truong\cite{TY18NRSSF}等人提出了一种窄幅滤波器，提高了平滑效果的同时保留了流体边缘的清晰轮廓。同时，他们发现如果在两个方向的1D滤波之后再进行一遍半径很小的2D滤波，由于滤波器的不可分离性带来的伪影状瑕疵会大大减轻。
+    
+    另外，Akinic\cite{ADA13SSF}等人提出了一种在屏幕空间渲染水花泡沫的方法。Imai\cite{IKM16SSF}等人提出了实时渲染液体复杂折射的方法，从而提高流体渲染的真实感。

@@ -1,0 +1,47 @@
+\documentclass{tongjithesis}
+\usepackage{tongjithesis}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% 若你想要用句点（．）替换句号（。）
+% 可以打开下面的注释
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% \catcode`\。=\active
+% \newcommand{。}{\ifmmode\text{．}\else ．\fi}
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+\input{sections/frontcover.tex}
+
+\pagestyle{firststyle}
+\input{sections/00_abstract.tex}
+
+\clearpage
+\tableofcontents   %放置目录
+\clearpage
+
+\pagestyle{mainstyle}
+\input{sections/01_intro}
+\clearpage
+\input{sections/02_ralated_works}
+\clearpage
+\input{sections/03_fluid_simulation}
+\clearpage
+\input{sections/04_non_pressure_forces}
+\clearpage
+\input{sections/05_neighbor_search}
+\clearpage
+\input{sections/06_rendering}
+\clearpage
+\input{sections/07_webgpu}
+\clearpage
+\input{sections/08_conclusion}
+\clearpage
+
+\addcontentsline{toc}{section}{参考文献}
+\bibliography{reference}
+
+\clearpage
+\input{sections/thanks}
+
+\end{document}
